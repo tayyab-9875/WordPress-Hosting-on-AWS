@@ -31,7 +31,6 @@ A hands-on cloud infrastructure project that hosts a WordPress website on AWS us
 - [Cleanup](#cleanup)
 - [Key Learnings](#key-learnings)
 - [Possible Improvements](#possible-improvements)
-- [Acknowledgements](#acknowledgements)
 - [Author](#author)
 
 ---
@@ -48,7 +47,23 @@ This project builds a two-tier WordPress deployment from the ground up inside a 
 
 ## Architecture
 
-![Architecture Diagram](images/architecture.png)
+```mermaid
+flowchart LR
+    User(["Internet User"]) --> IGW["Internet Gateway"]
+
+    subgraph VPC["Custom VPC (10.0.0.0/16)"]
+        subgraph PUB["Public Subnet"]
+            EC2["EC2 Instance<br/>Apache + PHP + WordPress<br/>(public-instance-sg)"]
+        end
+        subgraph PRIV["Private Subnets (2 AZs)"]
+            RDS[("RDS MySQL<br/>(db-sg)")]
+        end
+    end
+
+    IGW -->|"HTTP 80"| EC2
+    EC2 -->|"MySQL 3306"| RDS
+    EC2 -.->|"static assets"| S3[("S3 Bucket<br/>public access blocked")]
+```
 
 | Layer | Service | Placement | Purpose |
 |-------|---------|-----------|---------|
@@ -89,8 +104,6 @@ This project builds a two-tier WordPress deployment from the ground up inside a 
 3. Enter a name and an IPv4 CIDR block (for example, `10.0.0.0/16`).
 4. Create the VPC. AWS automatically creates a **main route table** that contains only the `local` route.
 
-![Create VPC](images/01-create-vpc.png)
-
 ### 2. Create the Public Subnet and Internet Gateway
 
 **Public subnet**
@@ -109,9 +122,6 @@ This project builds a two-tier WordPress deployment from the ground up inside a 
 1. Open the route table associated with the public subnet and choose **Edit routes**.
 2. Add a route: destination `0.0.0.0/0`, target = your Internet Gateway.
 
-![Internet Gateway](images/02-internet-gateway.png)
-![Public Route Table](images/03-public-route-table.png)
-
 ### 3. Create the Private Subnets
 
 1. Create private subnets in the same VPC (for example, `10.0.2.0/24` and `10.0.3.0/24`), **in two different Availability Zones**. RDS requires a subnet group that spans at least two AZs.
@@ -119,8 +129,6 @@ This project builds a two-tier WordPress deployment from the ground up inside a 
 3. Create a separate route table that contains only the `local` route and associate it with the private subnets.
 
 The **Resource map** in the VPC console should confirm that the public subnet routes to the Internet Gateway while the private subnets do not.
-
-![VPC Resource Map](images/04-resource-map.png)
 
 ### 4. Launch the EC2 Instance
 
@@ -144,8 +152,6 @@ The **Resource map** in the VPC console should confirm that the public subnet ro
 7. Attach a dedicated security group (for example, `db-sg`).
 8. Set authentication to **Password authentication** and create the database.
 
-![RDS Configuration](images/05-rds-config.png)
-
 ### 6. Configure Security Groups
 
 Traffic between the tiers is restricted with security-group references instead of IP addresses.
@@ -157,8 +163,6 @@ Traffic between the tiers is restricted with security-group references instead o
 | `db-sg` | MySQL/Aurora | 3306 | `public-instance-sg` |
 
 Remove any default or broader inbound rules from `db-sg` so that the database accepts connections **only from the web server**.
-
-![Security Groups](images/06-security-groups.png)
 
 ### 7. Create the S3 Bucket
 
@@ -236,8 +240,6 @@ sudo systemctl restart httpd php-fpm
 
 Open `http://<EC2_PUBLIC_DNS>` in your browser, complete the WordPress setup form (site title, admin username, password, email), and log in to the dashboard.
 
-![WordPress Setup](images/07-wordpress-setup.png)
-
 ---
 
 ## Verification
@@ -248,8 +250,6 @@ Open `http://<EC2_PUBLIC_DNS>` in your browser, complete the WordPress setup for
 - [ ] WordPress setup page loads at the EC2 public DNS
 - [ ] Admin dashboard and the public site load successfully
 - [ ] S3 bucket exists with **Block all public access** enabled
-
-![Final Result](images/08-final-site.png)
 
 ## Security Considerations
 
@@ -295,10 +295,6 @@ To avoid unnecessary charges, delete the resources when finished, in this order:
 - Attach an **IAM role** to EC2 and offload WordPress media to S3
 - Add **HTTPS** with ACM and a custom domain in Route 53
 - Codify the whole setup with **Terraform** or **CloudFormation**
-
-## Acknowledgements
-
-This project was built by following the AWS WordPress hosting walkthrough by [Harshhaa](https://github.com/NotHarshhaa) and documented here from my own implementation.
 
 ## Author
 
