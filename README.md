@@ -47,23 +47,7 @@ This project builds a two-tier WordPress deployment from the ground up inside a 
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    User(["Internet User"]) --> IGW["Internet Gateway"]
-
-    subgraph VPC["Custom VPC (10.0.0.0/16)"]
-        subgraph PUB["Public Subnet"]
-            EC2["EC2 Instance<br/>Apache + PHP + WordPress<br/>(public-instance-sg)"]
-        end
-        subgraph PRIV["Private Subnets (2 AZs)"]
-            RDS[("RDS MySQL<br/>(db-sg)")]
-        end
-    end
-
-    IGW -->|"HTTP 80"| EC2
-    EC2 -->|"MySQL 3306"| RDS
-    EC2 -.->|"static assets"| S3[("S3 Bucket<br/>public access blocked")]
-```
+![Architecture Diagram](https://user-images.githubusercontent.com/63364609/225718740-959f0476-b0b0-4f21-bfb9-8bdc95fbb4fc.png)
 
 | Layer | Service | Placement | Purpose |
 |-------|---------|-----------|---------|
